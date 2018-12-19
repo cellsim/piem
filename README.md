@@ -4,6 +4,8 @@ _Tool to generate Raspbian image used for network emulator_
 
 This image simplifies the network emulator setup on Raspberry Pi 3, by just installing the image without extra setup. If you are using old Raspberry Pi which doesn't have wifi module built in, you can either using an USB wifi adapter or using an usb-ethernet adapter and switch to use [ethernet bridge](#switch-to-wired-bridge).
 
+You can also setup for ubuntu with some [manual steps](#ubuntu-setup).
+
 ## Installation
 
 You can get the pre-build image [here](https://cisco.box.com/s/fe7ocl2gchnvgpxgjutxmh6azvxer1ya), and download [Etcher](https://etcher.io/) and install the image on the micro sdcard.
@@ -184,6 +186,91 @@ If you want to connect multiple devices to eth1, you can use network switch(DO N
 ## Packet loss burst model
 
 Currently Simple Gilbert Model is used for burst loss, and for more intuitive way to set the parameters, burst length (consecutive loss) and packet loss ratio is used. See "3.2.4 Consecutive losses: GI model with 2 parameters" in the paper ["Definition of a general and intuitive loss model for packet networks and its implementation in the Netem module in the Linux kernel"](http://netgroup.uniroma2.it/TR/TR-loss-netem.pdf) for more details.
+
+## Ubuntu setup
+
+1. Download the [deb](https://cisco.box.com/s/y2yz086i7if95xmjvk372buqdtgqlmpb) file, and run `sudo dpkg -i piem_0.1-1.deb`.
+
+2. Install bridge-utils, `sudo apt install bridge-utils`
+
+3. If you want to setup ethernet bridge, change "/etc/network/interfaces", assuming eth0 connect to internet and eth1 is the usb ethernet adapter.
+
+```
+auto lo
+
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet manual
+
+allow-hotplug eth1
+iface eth1 inet manual
+
+auto br0
+iface br0 inet dhcp
+    bridge_ports eth0 eth1
+```
+
+And then restart network `sudo systemctl restart networking.service`.
+
+4. If you want to setup wifi bridge, change "/etc/network/interfaces", assuming eth0 connect to internet and wlan0 is the usb wifi adapter.
+
+```
+auto lo
+
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet manual
+
+auto wlan0
+iface wlan0 inet manual
+
+auto br0
+iface br0 inet dhcp
+    bridge_ports eth0
+```
+
+Install hostapd to enable AP mode, `sudo apt install hostapd`, and change "/etc/hostapd/hostapd.conf" as below:
+
+```
+interface=wlan0
+driver=nl80211
+ssid=piem
+hw_mode=g
+channel=1
+wmm_enabled=0
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=2
+wpa_passphrase=piemulator
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+bridge=br0
+```
+
+Then restart network, enable and start hostapd service
+
+```
+sudo systemctl restart hostapd.service
+sudo systemctl enable hostapd.service
+sudo systemctl start hostapd.service
+```
+
+5. change ingress and egress in "/etc/piem/config.json".
+
+Take above settings for example: if using wifi bridge, ingress is "wlan0", egress is "eth0", if using ethernet bridge, ingress is "eth1", egress is "eth0".
+
+enable and start piem service.
+
+```
+sudo systemctl enable piem.service
+sudo systemctl start piem.service
+```
+
+Now you are ready to go.
 
 ## Dependencies
 

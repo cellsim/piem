@@ -195,7 +195,8 @@ class Rule(object):
         }
 
         if self.burst is not None:
-            params['gemodel_p'] = 100.0 * self.loss / self.burst / (1 - self.loss)
+            floss = self.loss / 100.0
+            params['gemodel_p'] = 100.0 * floss / self.burst / (1 - floss)
             params['gemodel_r'] = 100.0 / self.burst
         else:
             params['loss'] = self.loss

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PACKAGE_NAME="piem"
-VERSION="0.1-1"
+VERSION="0.2-1"
 BUILD_NAME=$PACKAGE_NAME"_"$VERSION
 
 if [ -d $BUILD_NAME ]; then
@@ -27,6 +27,7 @@ EOF
 
 cat << EOF > $BUILD_NAME/DEBIAN/postinst
 #!/bin/bash
+echo "This version requires netem with specified loss sequence model support"
 echo "Please setup the network bridge first"
 echo "And then change the ingress and egress settings in \"/etc/piem/config.json\""
 echo "enable piem service by running \"sudo systemctl enable piem\""

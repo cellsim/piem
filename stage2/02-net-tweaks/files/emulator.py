@@ -62,6 +62,7 @@ def init():
         print('Configuration not found at %s, please configure first' % CONFIG_PATH)
         return False
     init_cmd = '''
+        insmod /home/pi/raspbian/biuld/linux/net/sched/sch_netem.ko
         modprobe ifb numifbs=%(numifbs)d
 
         # uplink
@@ -94,6 +95,7 @@ def uninit():
         tc qdisc del dev %(egress)s root
 
         modprobe -r ifb
+        rmmod sch_netem
     ''' % gConfig
     return exec_shell(uninit_cmd)
 
@@ -150,13 +152,14 @@ get_ifb_idx = lambda handle: handle - HANDLE_MIN
 
 class Rule(object):
 
-    def __init__(self, emfilter, bw, loss, qdelay, delay, direction, burst, handle=None):
+    def __init__(self, emfilter, bw, loss, qdelay, delay, direction, burst=None, sls=None, handle=None):
         self.emfilter = emfilter
         self.bw = bw
         self.loss = loss
         self.qdelay = qdelay
         self.delay = delay
         self.burst = burst
+        self.sls = sls
         self.direction = direction
         self.handle = handle
 
@@ -194,7 +197,9 @@ class Rule(object):
             'handle': self.handle
         }
 
-        if self.burst is not None:
+        if self.sls is not None:
+            params['sls'] = self.sls
+        elif self.burst is not None:
             floss = self.loss / 100.0
             params['gemodel_p'] = 100.0 * floss / self.burst / (1 - floss)
             params['gemodel_r'] = 100.0 / self.burst
@@ -209,11 +214,12 @@ class Rule(object):
         ip link set dev ifb%(ifb_idx)d up
         tc filter add dev %(in_inf)s parent ffff: protocol ip prio 1 u32 match ip %(target)s %(ipfilter)s flowid 1:1 action mirred egress redirect dev ifb%(ifb_idx)d
         ''' % params
-
-        if self.burst is not None:
+        if self.sls is not None:
+            add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms\n' % params
+        elif self.burst is not None:
             add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss gemodel %(gemodel_p)s%% %(gemodel_r)s%% delay %(delay)dms\n' % params
         else:
-            add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss random %(loss)s%% delay %(delay)dms' % params
+            add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss random %(loss)s%% delay %(delay)dms\n' % params
 
         add_cmd += '''
         tc class add dev %(out_inf)s parent 1:1 classid 1:%(handle)d htb rate %(bw)skbit
@@ -256,6 +262,7 @@ def add_rule(r):
         'qdelay': r.qdelay,
         'delay': r.delay,
         'burst': r.burst,
+        'sls': r.sls,
         'handle': r.handle
     })
     save_rules(rules)
@@ -314,6 +321,7 @@ def main():
     add_parser.add_argument('--bw', '-b', type=int, help="rate limit in kbps", default=8000)
     add_parser.add_argument('--loss', '-l', type=int, help="loss ratio in percentage, 5 is 5%%", default=0)
     add_parser.add_argument('--burst', type=int, help="burst length in packets", default=None)
+    add_parser.add_argument('--sls', help="loss pattern file name in \"/usr/lib/tc/\" without \".patt\" file extension", default=None)
     add_parser.add_argument('--delay', '-d', type=int, help="delay in ms", default=10)
     add_parser.add_argument('--qdelay', '-q', type=int, help="maxinum queuing delay in ms", default=100)
     add_parser.add_argument('--filter', '-f', help="src(uplink) or dst(downlink) ip filter", required=True)
@@ -339,19 +347,19 @@ def main():
         uninit()
     elif args.subcommand == 'add':
         add_rule(
-            Rule(args.filter, args.bw, args.loss, args.qdelay, args.delay, args.direction, args.burst)
+            Rule(args.filter, args.bw, args.loss, args.qdelay, args.delay, args.direction, args.burst, args.sls)
         )
     elif args.subcommand == 'remove':
         if args.direction is not None:
             remove_rule(
-                Rule(args.filter, 0, 0, 0, 0, args.direction, 0)
+                Rule(args.filter, 0, 0, 0, 0, args.direction)
             )
         else:
             remove_rule(
-                Rule(args.filter, 0, 0, 0, 0, 'uplink', 0)
+                Rule(args.filter, 0, 0, 0, 0, 'uplink')
             )
             remove_rule(
-                Rule(args.filter, 0, 0, 0, 0, 'downlink', 0)
+                Rule(args.filter, 0, 0, 0, 0, 'downlink')
             )
     else:
         arg_parser.error('subcommand not found!')

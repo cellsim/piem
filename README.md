@@ -106,21 +106,27 @@ You can add an network emulation rule:
 ```
 $ sudo emulator.py add -h
 usage: emulator.py add [-h] [--bw BW] [--loss LOSS] [--burst BURST]
-                       [--delay DELAY] [--qdelay QDELAY] --filter FILTER
-                       --direction {uplink,downlink}
+                       [--sls SLS] [--delay DELAY] [--qdelay QDELAY] --ip IP
+                       --direction {uplink,downlink} [--tos TOS]
+                       [--srcport SRCPORT] [--dstport DSTPORT] [--ptype PTYPE]
 
 optional arguments:
   -h, --help            show this help message and exit
   --bw BW, -b BW        rate limit in kbps
   --loss LOSS, -l LOSS  loss ratio in percentage, 5 is 5%
   --burst BURST         burst length in packets
+  --sls SLS             loss pattern file name in "/usr/lib/tc/" without
+                        ".patt" file extension
   --delay DELAY, -d DELAY
                         delay in ms
   --qdelay QDELAY, -q QDELAY
                         maxinum queuing delay in ms
-  --filter FILTER, -f FILTER
-                        src(uplink) or dst(downlink) ip filter
+  --ip IP, -f IP        src(uplink) or dst(downlink) ip filter
   --direction {uplink,downlink}, -c {uplink,downlink}
+  --tos TOS             filter by dscp value
+  --srcport SRCPORT     filter by source port
+  --dstport DSTPORT     filter by destination port
+  --ptype PTYPE         filter by RTP payload type
 ```
 
 You can try add delay and use ping on the testing device (192.168.1.5 below) to validate that:

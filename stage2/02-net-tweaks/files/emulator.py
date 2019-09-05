@@ -35,13 +35,13 @@ def exec_shell(command):
             ret = False
     return ret
 
-def load_config():
-    if not os.path.exists(CONFIG_PATH):
+def load_config(config):
+    if not os.path.exists(config):
         return None
-    with open(CONFIG_PATH, 'r') as f:
+    with open(config, 'r') as f:
         content = f.read()
         config = json.loads(content)
-        print('loads config from %s' % CONFIG_PATH)
+        print('loads config from %s' % config)
         return config
 
 def save_config(args):
@@ -116,6 +116,7 @@ def save_rules(rules):
     rule_dir = os.path.dirname(RULE_PATH)
     mkdir_p(rule_dir)
     with open(RULE_PATH, 'w') as f:
+        print(rules)
         content = json.dumps(rules, indent=4)
         print('save rules to %s\n%s\n' % (RULE_PATH, content))
         f.write(content)
@@ -146,13 +147,60 @@ class HandleManager(object):
 HANDLE_MIN = 2
 HANDLE_MAX = HANDLE_MIN + MAX_NUM_IFBS - 1
 gHandleManager = HandleManager(HANDLE_MIN, HANDLE_MAX)
-gConfig = load_config()
 
 get_ifb_idx = lambda handle: handle - HANDLE_MIN
 
+class Filter(object):
+
+    def __init__(self, direction, ip, tos=None, srcport=None, dstport=None, ptype=None):
+        self.direction = direction
+        self.ip = ip
+        self.tos = tos
+        self.srcport = srcport
+        self.dstport = dstport
+        self.ptype = ptype
+
+    def __str__(self):
+        assert self.ip is not None
+        netem_filter = ''
+        if self.direction == 'uplink':
+            netem_filter = 'u32 match ip src %s' % self.ip
+        else:
+            netem_filter = 'u32 match ip dst %s' % self.ip
+
+        if self.tos is not None:
+            netem_filter += ' match ip tos %s 0xff' % self.tos
+
+        if self.srcport is not None:
+            netem_filter += ' match ip sport %s 0xffff' % self.srcport
+
+        if self.dstport is not None:
+            netem_filter += ' match ip dport %s 0xffff' % self.dstport
+
+        if self.ptype is not None:
+            netem_filter += ' match u8 0x80 0xc0 at 28 match u8 %s 0x7f at 29' % self.ptype
+
+        return netem_filter
+
+
 class Rule(object):
 
+    @classmethod
+    def from_dict(cls, rule_dict):
+        filter_dict = rule_dict['emfilter']
+        f = Filter(filter_dict['direction'], filter_dict['ip'],
+                   filter_dict.get('tos', None),
+                   filter_dict.get('srcport', None),
+                   filter_dict.get('dstport', None),
+                   filter_dict.get('ptype', None))
+        r = cls.__new__(cls)
+        r.__init(f, 0, 0, 0, 0, rule_dict['direction'], handle=rule_dict['handle'])
+        return r
+
     def __init__(self, emfilter, bw, loss, qdelay, delay, direction, burst=None, sls=None, handle=None):
+        self.__init(emfilter, bw, loss, qdelay, delay, direction, burst, sls, handle)
+
+    def __init(self, emfilter, bw, loss, qdelay, delay, direction, burst=None, sls=None, handle=None):
         self.emfilter = emfilter
         self.bw = bw
         self.loss = loss
@@ -165,8 +213,8 @@ class Rule(object):
 
     def exists(self, rules):
         for idx, r in enumerate(rules):
-            if r['emfilter'] == self.emfilter and \
-                r['direction'] == self.direction:
+            if r['emfilter']['ip'] == self.emfilter.ip and \
+              r['emfilter']['direction'] == self.emfilter.direction:
                 return idx
         return -1
 
@@ -177,20 +225,17 @@ class Rule(object):
         if self.direction == 'uplink':
             in_inf = gConfig['ingress']
             out_inf = gConfig['egress']
-            target = 'src'
         else:
             in_inf = gConfig['egress']
             out_inf = gConfig['ingress']
-            target = 'dst'
 
         ifb_idx = get_ifb_idx(self.handle)
 
         params = {
             'in_inf': in_inf,
             'out_inf': out_inf,
-            'target': target,
             'ifb_idx': ifb_idx,
-            'ipfilter': self.emfilter,
+            'emfilter': str(self.emfilter),
             'bw': self.bw,
             'delay': self.delay,
             'tb_qsize': self.bw * 1000 * self.qdelay / 8000,
@@ -212,7 +257,7 @@ class Rule(object):
         params = self._get_tc_params()
         add_cmd = '''
         ip link set dev ifb%(ifb_idx)d up
-        tc filter add dev %(in_inf)s parent ffff: protocol ip prio 1 u32 match ip %(target)s %(ipfilter)s flowid 1:1 action mirred egress redirect dev ifb%(ifb_idx)d
+        tc filter add dev %(in_inf)s parent ffff: protocol ip prio 1 %(emfilter)s flowid 1:1 action mirred egress redirect dev ifb%(ifb_idx)d
         ''' % params
         if self.sls is not None:
             add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms\n' % params
@@ -223,7 +268,7 @@ class Rule(object):
 
         add_cmd += '''
         tc class add dev %(out_inf)s parent 1:1 classid 1:%(handle)d htb rate %(bw)skbit
-        tc filter add dev %(out_inf)s protocol ip parent 1:0 prio 1 u32 match ip %(target)s %(ipfilter)s flowid 1:%(handle)d
+        tc filter add dev %(out_inf)s protocol ip parent 1:0 prio 1 %(emfilter)s flowid 1:%(handle)d
         tc qdisc add dev %(out_inf)s parent 1:%(handle)d bfifo limit %(tb_qsize)d
         ''' % params
 
@@ -232,10 +277,10 @@ class Rule(object):
     def remove(self):
         params = self._get_tc_params()
         remove_cmd = '''
-        tc filter del dev %(out_inf)s protocol ip parent 1:0 prio 1 u32 match ip %(target)s %(ipfilter)s flowid 1:%(handle)d
+        tc filter del dev %(out_inf)s protocol ip parent 1:0 prio 1 %(emfilter)s flowid 1:%(handle)d
         tc class del dev %(out_inf)s parent 1:1 classid 1:%(handle)d
         tc qdisc del dev ifb%(ifb_idx)d root
-        tc filter del dev %(in_inf)s parent ffff: protocol ip prio 1 u32 match ip %(target)s %(ipfilter)s flowid 1:1 action mirred egress redirect dev ifb%(ifb_idx)d
+        tc filter del dev %(in_inf)s parent ffff: protocol ip prio 1 %(emfilter)s flowid 1:1 action mirred egress redirect dev ifb%(ifb_idx)d
         ip link set dev ifb%(ifb_idx)d down
         ''' % params
 
@@ -246,7 +291,7 @@ def add_rule(r):
     rules = load_rules()
     idx = r.exists(rules)
     if idx != -1:
-        Rule(**rules[idx]).remove()
+        Rule.from_dict(rules[idx]).remove()
         gHandleManager.remove_handle(rules[idx]['handle'])
         del rules[idx]
     h = gHandleManager.get_available_handle()
@@ -255,7 +300,7 @@ def add_rule(r):
         return
     r.set_handle(h)
     rules.append({
-        'emfilter': r.emfilter,
+        'emfilter': r.emfilter.__dict__,
         'direction': r.direction,
         'bw': r.bw,
         'loss': r.loss,
@@ -269,11 +314,11 @@ def add_rule(r):
     r.add()
 
 def remove_rule(r):
-    print('removing rule for %s %s...' % (r.emfilter, r.direction))
+    print('removing rule for %s %s...' % (r.emfilter.__dict__, r.direction))
     rules = load_rules()
     idx = r.exists(rules)
     if idx != -1:
-        Rule(**rules[idx]).remove()
+        Rule.from_dict(rules[idx]).remove()
         gHandleManager.remove_handle(rules[idx]['handle'])
         del rules[idx]
         save_rules(rules)
@@ -324,17 +369,29 @@ def main():
     add_parser.add_argument('--sls', help="loss pattern file name in \"/usr/lib/tc/\" without \".patt\" file extension", default=None)
     add_parser.add_argument('--delay', '-d', type=int, help="delay in ms", default=10)
     add_parser.add_argument('--qdelay', '-q', type=int, help="maxinum queuing delay in ms", default=100)
-    add_parser.add_argument('--filter', '-f', help="src(uplink) or dst(downlink) ip filter", required=True)
+    add_parser.add_argument('--ip', '-f', help="src(uplink) or dst(downlink) ip filter", required=True)
     add_parser.add_argument('--direction', '-c', choices=['uplink', 'downlink'], required=True)
+
+    add_parser.add_argument('--tos', help='filter by dscp value', default=None)
+    add_parser.add_argument('--srcport', help='filter by source port', default=None)
+    add_parser.add_argument('--dstport', help='filter by destination port', default=None)
+    add_parser.add_argument('--ptype', help='filter by RTP payload type', default=None)
 
     # remove command
     remove_parser = subparsers.add_parser('remove')
-    remove_parser.add_argument('--filter', '-f', help="src(uplink) or dst(downlink) ip filter", required=True)
+    remove_parser.add_argument('--ip', '-f', help="src(uplink) or dst(downlink) ip filter", required=True)
     remove_parser.add_argument('--direction', '-c', choices=['uplink', 'downlink'])
 
     args = arg_parser.parse_args()
     global DRY_RUN
     DRY_RUN = args.dryrun
+    if DRY_RUN:
+        global CONFIG_PATH, RULE_PATH
+        CONFIG_PATH = './config.json'
+        RULE_PATH = './piem.rules'
+
+    global gConfig
+    gConfig = load_config(CONFIG_PATH)
 
     if args.subcommand == 'config':
         save_config(args)
@@ -346,20 +403,22 @@ def main():
     elif args.subcommand == 'uninit':
         uninit()
     elif args.subcommand == 'add':
+        f = Filter(args.direction, args.ip, args.tos, args.srcport, args.dstport, args.ptype)
         add_rule(
-            Rule(args.filter, args.bw, args.loss, args.qdelay, args.delay, args.direction, args.burst, args.sls)
+            Rule(f, args.bw, args.loss, args.qdelay, args.delay, args.direction, args.burst, args.sls)
         )
     elif args.subcommand == 'remove':
+        f = Filter(args.direction, args.ip)
         if args.direction is not None:
             remove_rule(
-                Rule(args.filter, 0, 0, 0, 0, args.direction)
+                Rule(f, 0, 0, 0, 0, args.direction)
             )
         else:
             remove_rule(
-                Rule(args.filter, 0, 0, 0, 0, 'uplink')
+                Rule(f, 0, 0, 0, 0, 'uplink')
             )
             remove_rule(
-                Rule(args.filter, 0, 0, 0, 0, 'downlink')
+                Rule(f, 0, 0, 0, 0, 'downlink')
             )
     else:
         arg_parser.error('subcommand not found!')

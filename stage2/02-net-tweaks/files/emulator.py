@@ -62,7 +62,6 @@ def init():
         print('Configuration not found at %s, please configure first' % CONFIG_PATH)
         return False
     init_cmd = '''
-        insmod /home/pi/raspbian/biuld/linux/net/sched/sch_netem.ko
         modprobe ifb numifbs=%(numifbs)d
 
         # uplink
@@ -95,7 +94,6 @@ def uninit():
         tc qdisc del dev %(egress)s root
 
         modprobe -r ifb
-        rmmod sch_netem
     ''' % gConfig
     return exec_shell(uninit_cmd)
 

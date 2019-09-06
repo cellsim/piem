@@ -17,6 +17,15 @@ install -v -m 644 files/wait.conf		"${ROOTFS_DIR}/etc/systemd/system/dhcpcd.serv
 install -v -d					"${ROOTFS_DIR}/etc/wpa_supplicant"
 install -v -m 600 files/wpa_supplicant.conf	"${ROOTFS_DIR}/etc/wpa_supplicant/wpa_supplicant.conf"
 
+install -v -m 644 files/sch_netem.ko             "${ROOTFS_DIR}/etc/sch_netem.ko"
+
+# need better way to do this uname -r not working
 on_chroot << EOF
 systemctl enable piem
+rm -f /sbin/tc
+ls -l /lib/modules/
+rm -f /lib/modules/4.19.66-v7+/kernel/net/sched/sch_netem.ko
+mv /etc/sch_netem.ko /lib/modules/4.19.66-v7+/kernel/net/sched/sch_netem.ko
 EOF
+
+install -v -m 755 files/tc                       "${ROOTFS_DIR}/sbin/tc"

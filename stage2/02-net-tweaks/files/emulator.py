@@ -211,6 +211,7 @@ class Rule(object):
 
     def exists(self, rules):
         for idx, r in enumerate(rules):
+            # todo: take other filter fields into account
             if r['emfilter']['ip'] == self.emfilter.ip and \
               r['emfilter']['direction'] == self.emfilter.direction:
                 return idx
@@ -272,6 +273,24 @@ class Rule(object):
 
         return exec_shell(add_cmd)
 
+    def change(self):
+        params = self._get_tc_params()
+        change_cmd = ''
+        # filter is not going to be changed
+        if self.sls is not None:
+            change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms\n' % params
+        elif self.burst is not None:
+            change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss gemodel %(gemodel_p)s%% %(gemodel_r)s%% delay %(delay)dms\n' % params
+        else:
+            change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss random %(loss)s%% delay %(delay)dms\n' % params
+
+        change_cmd += '''
+        tc class change dev %(out_inf)s parent 1:1 classid 1:%(handle)d htb rate %(bw)skbit
+        tc qdisc change dev %(out_inf)s parent 1:%(handle)d bfifo limit %(tb_qsize)d
+        ''' % params
+
+        return exec_shell(change_cmd)
+
     def remove(self):
         params = self._get_tc_params()
         remove_cmd = '''
@@ -310,6 +329,29 @@ def add_rule(r):
     })
     save_rules(rules)
     r.add()
+
+def change_rule(r):
+    rules = load_rules()
+    idx = r.exists(rules)
+    if idx != -1:
+        h = rules[idx]['handle']
+        r.set_handle(h)
+        del rules[idx]
+        rules.append({
+            'emfilter': r.emfilter.__dict__,
+            'direction': r.direction,
+            'bw': r.bw,
+            'loss': r.loss,
+            'qdelay': r.qdelay,
+            'delay': r.delay,
+            'burst': r.burst,
+            'sls': r.sls,
+            'handle': r.handle
+        })
+        save_rules(rules)
+        r.change()
+    else:
+        print('no rule found!')
 
 def remove_rule(r):
     print('removing rule for %s %s...' % (r.emfilter.__dict__, r.direction))
@@ -375,6 +417,17 @@ def main():
     add_parser.add_argument('--dstport', help='filter by destination port', default=None)
     add_parser.add_argument('--ptype', help='filter by RTP payload type', default=None)
 
+    # change command
+    change_parser = subparsers.add_parser('change')
+    change_parser.add_argument('--bw', '-b', type=int, help="rate limit in kbps", default=8000)
+    change_parser.add_argument('--loss', '-l', type=int, help="loss ratio in percentage, 5 is 5%%", default=0)
+    change_parser.add_argument('--burst', type=int, help="burst length in packets", default=None)
+    change_parser.add_argument('--sls', help="loss pattern file name in \"/usr/lib/tc/\" without \".patt\" file extension", default=None)
+    change_parser.add_argument('--delay', '-d', type=int, help="delay in ms", default=10)
+    change_parser.add_argument('--qdelay', '-q', type=int, help="maxinum queuing delay in ms", default=100)
+    change_parser.add_argument('--ip', '-f', help="src(uplink) or dst(downlink) ip filter", required=True)
+    change_parser.add_argument('--direction', '-c', choices=['uplink', 'downlink'], required=True)
+
     # remove command
     remove_parser = subparsers.add_parser('remove')
     remove_parser.add_argument('--ip', '-f', help="src(uplink) or dst(downlink) ip filter", required=True)
@@ -403,6 +456,11 @@ def main():
     elif args.subcommand == 'add':
         f = Filter(args.direction, args.ip, args.tos, args.srcport, args.dstport, args.ptype)
         add_rule(
+            Rule(f, args.bw, args.loss, args.qdelay, args.delay, args.direction, args.burst, args.sls)
+        )
+    elif args.subcommand == 'change':
+        f = Filter(args.direction, args.ip)
+        change_rule(
             Rule(f, args.bw, args.loss, args.qdelay, args.delay, args.direction, args.burst, args.sls)
         )
     elif args.subcommand == 'remove':

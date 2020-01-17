@@ -174,6 +174,71 @@ optional arguments:
   --direction {uplink,downlink}, -c {uplink,downlink}
 ```
 
+## Emulate network dynamics
+
+There is a helper script that can emulate network dynamics, and this can be helpful for emulate the wifi network.
+
+```
+./dynem.py -h
+usage: dynem.py [-h] [--dryrun] --cfg CFG
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --dryrun           Dry run
+  --cfg CFG, -f CFG  configuration file
+```
+
+The configuration file specifies how the dynamic network behavior changes.
+
+Here is an example of the configuration file, the network parameters like "bw", "qdelay" etc are the same that saved in `/etc/piem/piem.rules`.
+
+```
+{
+    "qdelay": 600, 
+    "loss": 2, 
+    "bw": 2000, 
+    "handle": 2, 
+    "delay": 200, 
+    "burst": 4, 
+    "emfilter": {
+        "direction": "uplink", 
+        "ip": "10.34.12.3", 
+        "srcport": null, 
+        "ptype": null, 
+        "tos": null, 
+        "dstport": null
+    }, 
+    "sls": null,
+
+    "dynamics": [
+        {
+            "bw": 500,
+            "duration": 2,
+            "interval": 10
+        },
+        {
+            "bw": 300,
+            "duration": 1,
+            "interval": 20
+        },
+        {
+            "bw": 1000,
+            "duration": 3,
+            "interval": 0
+        }
+    ]
+}
+```
+
+The bandwidth is 2 mbps normally, and will:
+
+1. 10 seconds later, drop to 500 kbps, and last for 2 seconds, then the bandwidth goes back to 2 mbps;
+2. 20 seconds later, the bandwidth drops to 300 and last for 1 second, then the bandwidth goes back to 2 mbps;
+3. 0 seconds later, the bandwidth goes back to 1 mbps, and last for 3 seconds, then the bandwidth goes back to 2 mbps;
+4. loop back above phases.
+
+For those network parameters not specified in the 'dynamics' section, it will remain the same as before.
+
 ## Switch to wired bridge
 
 If you perfer wired connection, you can switch to two ethernet (another one using usb-ethernet port) using the script [bridge\_switch.sh](/stage2/02-net-tweaks/files/bridge_switch.sh) built in.

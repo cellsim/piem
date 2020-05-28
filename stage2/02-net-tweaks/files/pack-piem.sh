@@ -17,7 +17,7 @@ Version: $VERSION
 Section: net
 Priority: optional
 Architecture: all
-Depends: python2.7
+Depends: python2.7, hostapd, wpasupplicant
 Maintainer: Jeromy Fu<jianfu@cisco.com>
 Description: Pi Network Emulator
  Wrapper of a bunch of tc commands to allow
@@ -39,12 +39,19 @@ mkdir -p $BUILD_NAME/etc/piem
 cp piem-config.json $BUILD_NAME/etc/piem/config.json
 cp unstable-wifi.cfg $BUILD_NAME/etc/piem/unstable-wifi.cfg
 
+cp interfaces.wlan $BUILD_NAME/etc/network/interfaces.wlan
+cp interfaces.eth $BUILD_NAME/etc/network/interfaces.eth
+
+cp hostapd.conf $BUILD_NAME/etc/hostapd/hostapd.conf
+cp wpa_supplicant.conf $BUILD_NAME/etc/wpa_supplicant/wpa_supplicant.conf
+
 mkdir -p $BUILD_NAME/lib/systemd/system
 cp piem.service $BUILD_NAME/lib/systemd/system/
 
 mkdir $BUILD_NAME/sbin
 cp emulator.py $BUILD_NAME/sbin/
 cp dynem.py $BUILD_NAME/sbin/
+cp bridge_switch.sh $BUILD_NAME/sbin/
 
 chown root:root -R $BUILD_NAME
 dpkg -b $BUILD_NAME

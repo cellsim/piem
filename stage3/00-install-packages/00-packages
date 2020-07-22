@@ -8,3 +8,5 @@ chromium-browser rpi-chromium-mods
 gldriver-test
 fonts-droid-fallback
 fonts-liberation2
+obconf
+arandr

@@ -8,7 +8,7 @@ You can also setup for ubuntu with some [manual steps](#ubuntu-setup).
 
 ## Installation
 
-You can get the pre-build image [here](https://cisco.box.com/s/fe7ocl2gchnvgpxgjutxmh6azvxer1ya), and download [Etcher](https://etcher.io/) and install the image on the micro sdcard.
+You can get the pre-build image [here](https://cisco.box.com/s/ig7587k1wcx7p4iji54gzzv7v4lhl7za), and download [Etcher](https://etcher.io/) and install the image on the micro sdcard.
 
 Once startup, it already setup wifi in AP mode and bridge between wifi (wlan0) and ethernet (eth0) ports. You can plug in the ethernet port to your local network, you can then ping `piemulator.local` to get the ip address of the emulator, or you can just use the domain name for ssh access, like `ssh pi@piemulator.local`.
 
@@ -104,11 +104,12 @@ $ sudo systemctl restart piem
 You can add an network emulation rule:
 
 ```
-$ sudo emulator.py add -h
+$ emulator.py add -h
 usage: emulator.py add [-h] [--bw BW] [--loss LOSS] [--burst BURST]
-                       [--sls SLS] [--delay DELAY] [--qdelay QDELAY] --ip IP
-                       --direction {uplink,downlink} [--tos TOS]
-                       [--srcport SRCPORT] [--dstport DSTPORT] [--ptype PTYPE]
+                       [--sls SLS] [--delay DELAY] [--jitter JITTER]
+                       [--qdelay QDELAY] --ip IP --direction {uplink,downlink}
+                       [--tos TOS] [--srcport SRCPORT] [--dstport DSTPORT]
+                       [--ptype PTYPE] [--protocol {tcp,udp,all}]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -119,6 +120,8 @@ optional arguments:
                         ".patt" file extension
   --delay DELAY, -d DELAY
                         delay in ms
+  --jitter JITTER, -j JITTER
+                        jitter in ms
   --qdelay QDELAY, -q QDELAY
                         maxinum queuing delay in ms
   --ip IP, -f IP        src(uplink) or dst(downlink) ip filter
@@ -127,6 +130,8 @@ optional arguments:
   --srcport SRCPORT     filter by source port
   --dstport DSTPORT     filter by destination port
   --ptype PTYPE         filter by RTP payload type
+  --protocol {tcp,udp,all}
+                        filter by protocol number
 ```
 
 You can try add delay and use ping on the testing device (192.168.1.5 below) to validate that:

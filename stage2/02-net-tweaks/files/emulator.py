@@ -485,14 +485,14 @@ def main():
         f = Filter(args.direction, args.ip)
         if args.direction is not None:
             remove_rule(
-                Rule(f, 0, 0, 0, 0, args.direction)
+                Rule(f, 0, 0, 0, 0, 0, args.direction)
             )
         else:
             remove_rule(
-                Rule(f, 0, 0, 0, 0, 'uplink')
+                Rule(f, 0, 0, 0, 0, 0, 'uplink')
             )
             remove_rule(
-                Rule(f, 0, 0, 0, 0, 'downlink')
+                Rule(f, 0, 0, 0, 0, 0, 'downlink')
             )
     else:
         arg_parser.error('subcommand not found!')

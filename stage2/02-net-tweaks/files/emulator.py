@@ -150,13 +150,22 @@ get_ifb_idx = lambda handle: handle - HANDLE_MIN
 
 class Filter(object):
 
-    def __init__(self, direction, ip, tos=None, srcport=None, dstport=None, ptype=None):
+    def __init__(self, direction, ip, tos=None, srcport=None, dstport=None, ptype=None, protocol='all'):
         self.direction = direction
         self.ip = ip
         self.tos = tos
         self.srcport = srcport
         self.dstport = dstport
         self.ptype = ptype
+        self.protocol = protocol
+
+    def _get_protocol_filter(self):
+        if self.protocol == 'tcp':
+            return ' match ip protocol 6 0xff'
+        elif self.protocol == 'udp':
+            return ' match ip protocol 17 0xff'
+        else:
+            return ' '
 
     def __str__(self):
         assert self.ip is not None
@@ -165,6 +174,8 @@ class Filter(object):
             netem_filter = 'u32 match ip src %s' % self.ip
         else:
             netem_filter = 'u32 match ip dst %s' % self.ip
+
+        netem_filter += self._get_protocol_filter()
 
         if self.tos is not None:
             netem_filter += ' match ip tos %s 0xff' % self.tos
@@ -178,7 +189,7 @@ class Filter(object):
         if self.ptype is not None:
             netem_filter += ' match u8 0x80 0xc0 at 28 match u8 %s 0x7f at 29' % self.ptype
 
-        return netem_filter
+        return netem_filter.strip()
 
 
 class Rule(object):
@@ -190,19 +201,21 @@ class Rule(object):
                    filter_dict.get('tos', None),
                    filter_dict.get('srcport', None),
                    filter_dict.get('dstport', None),
-                   filter_dict.get('ptype', None))
+                   filter_dict.get('ptype', None),
+                   filter_dict.get('protocol', 'all'))
         r = cls.__new__(cls)
-        r.__init(f, 0, 0, 0, 0, rule_dict['direction'], handle=rule_dict['handle'])
+        r.__init(f, 0, 0, 0, 0, 0, rule_dict['direction'], handle=rule_dict['handle'])
         return r
 
-    def __init__(self, emfilter, bw, loss, qdelay, delay, direction, burst=None, sls=None, handle=None):
-        self.__init(emfilter, bw, loss, qdelay, delay, direction, burst, sls, handle)
+    def __init__(self, emfilter, bw, loss, qdelay, jitter, delay, direction, burst=None, sls=None, handle=None):
+        self.__init(emfilter, bw, loss, qdelay, jitter, delay, direction, burst, sls, handle)
 
-    def __init(self, emfilter, bw, loss, qdelay, delay, direction, burst=None, sls=None, handle=None):
+    def __init(self, emfilter, bw, loss, qdelay, jitter, delay, direction, burst=None, sls=None, handle=None):
         self.emfilter = emfilter
         self.bw = bw
         self.loss = loss
         self.qdelay = qdelay
+        self.jitter = jitter
         self.delay = delay
         self.burst = burst
         self.sls = sls
@@ -237,6 +250,7 @@ class Rule(object):
             'emfilter': str(self.emfilter),
             'bw': self.bw,
             'delay': self.delay,
+            'jitter': self.jitter,
             'tb_qsize': self.bw * 1000 * self.qdelay / 8000,
             'handle': self.handle
         }
@@ -259,11 +273,11 @@ class Rule(object):
         tc filter add dev %(in_inf)s parent ffff: protocol ip prio 1 %(emfilter)s flowid 1:1 action mirred egress redirect dev ifb%(ifb_idx)d
         ''' % params
         if self.sls is not None:
-            add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms\n' % params
+            add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms %(jitter)dms\n' % params
         elif self.burst is not None:
-            add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss gemodel %(gemodel_p)s%% %(gemodel_r)s%% delay %(delay)dms\n' % params
+            add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss gemodel %(gemodel_p)s%% %(gemodel_r)s%% delay %(delay)dms %(jitter)dms\n' % params
         else:
-            add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss random %(loss)s%% delay %(delay)dms\n' % params
+            add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss random %(loss)s%% delay %(delay)dms %(jitter)dms\n' % params
 
         add_cmd += '''
         tc class add dev %(out_inf)s parent 1:1 classid 1:%(handle)d htb rate %(bw)skbit
@@ -278,11 +292,11 @@ class Rule(object):
         change_cmd = ''
         # filter is not going to be changed
         if self.sls is not None:
-            change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms\n' % params
+            change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms %(jitter)dms\n' % params
         elif self.burst is not None:
-            change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss gemodel %(gemodel_p)s%% %(gemodel_r)s%% delay %(delay)dms\n' % params
+            change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss gemodel %(gemodel_p)s%% %(gemodel_r)s%% delay %(delay)dms %(jitter)dms\n' % params
         else:
-            change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss random %(loss)s%% delay %(delay)dms\n' % params
+            change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss random %(loss)s%% delay %(delay)dms %(jitter)dms\n' % params
 
         change_cmd += '''
         tc class change dev %(out_inf)s parent 1:1 classid 1:%(handle)d htb rate %(bw)skbit
@@ -322,6 +336,7 @@ def add_rule(r):
         'bw': r.bw,
         'loss': r.loss,
         'qdelay': r.qdelay,
+        'jitter': r.jitter,
         'delay': r.delay,
         'burst': r.burst,
         'sls': r.sls,
@@ -343,6 +358,7 @@ def change_rule(r):
             'bw': r.bw,
             'loss': r.loss,
             'qdelay': r.qdelay,
+            'jitter': r.jitter,
             'delay': r.delay,
             'burst': r.burst,
             'sls': r.sls,
@@ -408,6 +424,7 @@ def main():
     add_parser.add_argument('--burst', type=int, help="burst length in packets", default=None)
     add_parser.add_argument('--sls', help="loss pattern file name in \"/usr/lib/tc/\" without \".patt\" file extension", default=None)
     add_parser.add_argument('--delay', '-d', type=int, help="delay in ms", default=10)
+    add_parser.add_argument('--jitter', '-j', type=int, help="jitter in ms", default=0)
     add_parser.add_argument('--qdelay', '-q', type=int, help="maxinum queuing delay in ms", default=100)
     add_parser.add_argument('--ip', '-f', help="src(uplink) or dst(downlink) ip filter", required=True)
     add_parser.add_argument('--direction', '-c', choices=['uplink', 'downlink'], required=True)
@@ -416,6 +433,7 @@ def main():
     add_parser.add_argument('--srcport', help='filter by source port', default=None)
     add_parser.add_argument('--dstport', help='filter by destination port', default=None)
     add_parser.add_argument('--ptype', help='filter by RTP payload type', default=None)
+    add_parser.add_argument('--protocol', help='filter by protocol number', choices=['tcp', 'udp', 'all'], default='all')
 
     # change command
     change_parser = subparsers.add_parser('change')
@@ -454,14 +472,14 @@ def main():
     elif args.subcommand == 'uninit':
         uninit()
     elif args.subcommand == 'add':
-        f = Filter(args.direction, args.ip, args.tos, args.srcport, args.dstport, args.ptype)
+        f = Filter(args.direction, args.ip, args.tos, args.srcport, args.dstport, args.ptype, args.protocol)
         add_rule(
-            Rule(f, args.bw, args.loss, args.qdelay, args.delay, args.direction, args.burst, args.sls)
+            Rule(f, args.bw, args.loss, args.qdelay, args.jitter, args.delay, args.direction, args.burst, args.sls)
         )
     elif args.subcommand == 'change':
         f = Filter(args.direction, args.ip)
         change_rule(
-            Rule(f, args.bw, args.loss, args.qdelay, args.delay, args.direction, args.burst, args.sls)
+            Rule(f, args.bw, args.loss, args.qdelay, args.jitter, args.delay, args.direction, args.burst, args.sls)
         )
     elif args.subcommand == 'remove':
         f = Filter(args.direction, args.ip)

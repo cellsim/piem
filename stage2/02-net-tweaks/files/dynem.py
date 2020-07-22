@@ -98,18 +98,20 @@ def run(config):
     dire = config['emfilter']['direction']
     ip = config['emfilter']['ip']
     tos = config['emfilter'].get('tos', None)
+    protocol = config['emfilter'].get('protocol', 'all')
     srcport = config['emfilter'].get('srcport', None)
     dstport = config['emfilter'].get('dstport', None)
     ptype = config['emfilter'].get('ptype', None)
     bw = config.get('bw', 8000)
     loss = config.get('loss', 0)
     qdelay = config.get('qdelay', 100)
+    jitter = config.get('jitter', 0)
     delay = config.get('delay', 10)
     burst = config.get('burst', None)
     sls = config.get('sls', None)
 
-    f = em.Filter(dire, ip, tos, srcport, dstport, ptype)
-    r = em.Rule(f, bw, loss, qdelay, delay, dire, burst, sls)
+    f = em.Filter(dire, ip, tos, srcport, dstport, ptype, protocol)
+    r = em.Rule(f, bw, loss, qdelay, jitter, delay, dire, burst, sls)
     em.add_rule(r)
 
     rlist = []
@@ -117,10 +119,11 @@ def run(config):
         dyn_bw = dyn.get('bw', bw)
         dyn_loss = dyn.get('loss', loss)
         dyn_qdelay = dyn.get('qdelay', qdelay)
+        dyn_jitter = dyn.get('jitter', jitter)
         dyn_delay = dyn.get('delay', delay)
         dyn_burst = dyn.get('burst', burst)
         dyn_sls = dyn.get('sls', sls)
-        dyn_r = em.Rule(f, dyn_bw, dyn_loss, dyn_qdelay, dyn_delay, dire, dyn_burst, dyn_sls)
+        dyn_r = em.Rule(f, dyn_bw, dyn_loss, dyn_qdelay, dyn_jitter, dyn_delay, dire, dyn_burst, dyn_sls)
         rlist.append({'rule': dyn_r, 'interval': dyn['interval'], 'duration': dyn['duration']})
  
     idx = 0

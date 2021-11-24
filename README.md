@@ -265,7 +265,7 @@ Currently Simple Gilbert Model is used for burst loss, and for more intuitive wa
 
 ## Ubuntu setup
 
-1. Download the [deb](https://cisco.box.com/s/y2yz086i7if95xmjvk372buqdtgqlmpb) file, and run `sudo dpkg -i piem_0.1-1.deb`.
+1. Download the [deb](https://cisco.box.com/s/2uwuaaeat9d8f77gsv21pr3qmi7yoxp0) file, and run `sudo dpkg -i piem_0.1-1.deb`.
 
 2. Install bridge-utils, `sudo apt install bridge-utils`
 

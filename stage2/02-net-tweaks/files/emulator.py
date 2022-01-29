@@ -270,7 +270,7 @@ class Rule(object):
         params = self._get_tc_params()
         add_cmd = '''
         ip link set dev ifb%(ifb_idx)d up
-        tc filter add dev %(in_inf)s parent ffff: protocol ip prio 1 %(emfilter)s flowid 1:1 action mirred egress redirect dev ifb%(ifb_idx)d
+        tc filter add dev %(in_inf)s parent ffff: protocol ip prio 1 handle ::%(handle)d %(emfilter)s flowid 1:%(handle)d action mirred egress redirect dev ifb%(ifb_idx)d
         ''' % params
         if self.sls is not None:
             add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms %(jitter)dms\n' % params
@@ -281,7 +281,7 @@ class Rule(object):
 
         add_cmd += '''
         tc class add dev %(out_inf)s parent 1:1 classid 1:%(handle)d htb rate %(bw)skbit
-        tc filter add dev %(out_inf)s protocol ip parent 1:0 prio 1 %(emfilter)s flowid 1:%(handle)d
+        tc filter add dev %(out_inf)s protocol ip parent 1:0 prio 1 handle ::%(handle)d %(emfilter)s flowid 1:%(handle)d
         tc qdisc add dev %(out_inf)s parent 1:%(handle)d bfifo limit %(tb_qsize)d
         ''' % params
 
@@ -308,10 +308,10 @@ class Rule(object):
     def remove(self):
         params = self._get_tc_params()
         remove_cmd = '''
-        tc filter del dev %(out_inf)s protocol ip parent 1:0 prio 1 %(emfilter)s flowid 1:%(handle)d
+        tc filter del dev %(out_inf)s protocol ip parent 1:0 prio 1 handle 800::%(handle)d %(emfilter)s flowid 1:%(handle)d
         tc class del dev %(out_inf)s parent 1:1 classid 1:%(handle)d
         tc qdisc del dev ifb%(ifb_idx)d root
-        tc filter del dev %(in_inf)s parent ffff: protocol ip prio 1 %(emfilter)s flowid 1:1 action mirred egress redirect dev ifb%(ifb_idx)d
+        tc filter del dev %(in_inf)s parent ffff: protocol ip prio 1 handle 800::%(handle)d %(emfilter)s flowid 1:%(handle)d action mirred egress redirect dev ifb%(ifb_idx)d
         ip link set dev ifb%(ifb_idx)d down
         ''' % params
 

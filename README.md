@@ -8,7 +8,7 @@ You can also setup for ubuntu with some [manual steps](#ubuntu-setup).
 
 ## Installation
 
-You can get the pre-build image [here](https://cisco.box.com/s/ig7587k1wcx7p4iji54gzzv7v4lhl7za), and download [Etcher](https://etcher.io/) and install the image on the micro sdcard.
+You can get the pre-build image [here](https://cisco.box.com/s/kclcch2ujsr83qie6po6hq2w2yrj8u13), and download [Etcher](https://etcher.io/) and install the image on the micro sdcard.
 
 Once startup, it already setup wifi in AP mode and bridge between wifi (wlan0) and ethernet (eth0) ports. You can plug in the ethernet port to your local network, you can then ping `piemulator.local` to get the ip address of the emulator, or you can just use the domain name for ssh access, like `ssh pi@piemulator.local`.
 
@@ -265,7 +265,7 @@ Currently Simple Gilbert Model is used for burst loss, and for more intuitive wa
 
 ## Ubuntu setup
 
-1. Download the [deb](https://cisco.box.com/s/2uwuaaeat9d8f77gsv21pr3qmi7yoxp0) file, and run `sudo dpkg -i piem_0.1-1.deb`.
+1. Download the [deb](https://cisco.box.com/s/8lnv91g0dhi8204eaf7eh2si37svbmi1) file, and run `sudo dpkg -i piem_1.0.deb`.
 
 2. Install bridge-utils, `sudo apt install bridge-utils`
 

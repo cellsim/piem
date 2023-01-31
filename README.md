@@ -20,6 +20,8 @@ Wifi SSID: `piem`, password: `piemulator`
 
 Then you can emulate the network condition of those test devices, both uplink and downlink.
 
+To update, you can download the debian [package](https://cisco.box.com/s/ksn191amu2z0isac15xy78a94jwddz3d), and then install via `sudo dpkg -i ./piem_1.1.deb`
+
 ## Network emulation
 
 There is a emulator script [emulator.py](/stage2/02-net-tweaks/files/emulator.py) built in.
@@ -179,6 +181,72 @@ optional arguments:
   --direction {uplink,downlink}, -c {uplink,downlink}
 ```
 
+## Block TCP/UDP
+
+[fw.sh](/stage2/02-net-tweaks/files/fw.sh) can be used to block TCP/UDP traffic from/to specific remote port:
+
+```
+$ sudo fw.sh
+
+Usage:  fw.sh block [protocol] [remote_port]
+        fw.sh unblock [protocol] [remote_port]
+        fw.sh flush
+        fw.sh list
+
+$ sudo fw.sh block udp 5004 # block udp traffic from/to remote port 5004
+block udp for remote port 5004
+
+$ sudo fw.sh block udp 9000 # block udp traffic from/to remote port 9000
+block udp for remote port 9000
+
+$ sudo fw.sh list
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+DROP       udp  --  anywhere             anywhere             udp spt:5004
+DROP       udp  --  anywhere             anywhere             udp spt:9000
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+DROP       udp  --  anywhere             anywhere             udp dpt:5004
+DROP       udp  --  anywhere             anywhere             udp spt:5004
+DROP       udp  --  anywhere             anywhere             udp dpt:9000
+DROP       udp  --  anywhere             anywhere             udp spt:9000
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+DROP       udp  --  anywhere             anywhere             udp dpt:5004
+DROP       udp  --  anywhere             anywhere             udp dpt:9000
+
+$ sudo fw.h unblock udp 5004 # unblock udp traffic from/to remote port 5004
+unblock udp for remote port 5004
+
+$ sudo ./fw.sh list
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+DROP       udp  --  anywhere             anywhere             udp spt:9000
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+DROP       udp  --  anywhere             anywhere             udp dpt:9000
+DROP       udp  --  anywhere             anywhere             udp spt:9000
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+DROP       udp  --  anywhere             anywhere             udp dpt:9000
+
+$ sudo fw.sh flush # clear all rules
+
+$ sudo ./fw.sh list
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+```
+
 ## Emulate network dynamics
 
 There is a helper script that can emulate network dynamics, and this can be helpful for emulate the wifi network.
@@ -265,7 +333,7 @@ Currently Simple Gilbert Model is used for burst loss, and for more intuitive wa
 
 ## Ubuntu setup
 
-1. Download the [deb](https://cisco.box.com/s/8lnv91g0dhi8204eaf7eh2si37svbmi1) file, and run `sudo dpkg -i piem_1.0.deb`.
+1. Download the [deb](https://cisco.box.com/s/ksn191amu2z0isac15xy78a94jwddz3d) file, and run `sudo dpkg -i ./piem_1.1.deb`.
 
 2. Install bridge-utils, `sudo apt install bridge-utils`
 

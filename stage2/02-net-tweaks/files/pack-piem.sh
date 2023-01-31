@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PACKAGE_NAME="piem"
-VERSION="0.2-1"
+VERSION="1.1"
 BUILD_NAME=$PACKAGE_NAME"_"$VERSION
 
 if [ -d $BUILD_NAME ]; then
@@ -39,10 +39,14 @@ mkdir -p $BUILD_NAME/etc/piem
 cp piem-config.json $BUILD_NAME/etc/piem/config.json
 cp unstable-wifi.cfg $BUILD_NAME/etc/piem/unstable-wifi.cfg
 
+mkdir -p $BUILD_NAME/etc/network
 cp interfaces.wlan $BUILD_NAME/etc/network/interfaces.wlan
 cp interfaces.eth $BUILD_NAME/etc/network/interfaces.eth
 
+mkdir -p $BUILD_NAME/etc/hostapd
 cp hostapd.conf $BUILD_NAME/etc/hostapd/hostapd.conf
+
+mkdir -p $BUILD_NAME/etc/wpa_supplicant
 cp wpa_supplicant.conf $BUILD_NAME/etc/wpa_supplicant/wpa_supplicant.conf
 
 mkdir -p $BUILD_NAME/lib/systemd/system
@@ -52,6 +56,7 @@ mkdir $BUILD_NAME/sbin
 cp emulator.py $BUILD_NAME/sbin/
 cp dynem.py $BUILD_NAME/sbin/
 cp bridge_switch.sh $BUILD_NAME/sbin/
+cp fw.sh $BUILD_NAME/sbin/
 
 chown root:root -R $BUILD_NAME
 dpkg -b $BUILD_NAME

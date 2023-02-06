@@ -3,6 +3,7 @@ set -e
 
 REMOTE_PORT=9000
 PROTOCOL="udp"
+IP="192.168.1.0/24"
 
 if [ `whoami` != root ]; then
     echo "Please run this script using sudo"
@@ -10,8 +11,8 @@ if [ `whoami` != root ]; then
 fi
 
 COMMAND_LINE_OPTIONS_HELP="
-Usage:  $0 block [protocol] [remote_port]
-        $0 unblock [protocol] [remote_port]
+Usage:  $0 block [protocol] [remote_port] [ip]
+        $0 unblock [protocol] [remote_port] [ip]
         $0 flush
         $0 list
 "
@@ -23,18 +24,18 @@ usage() {
 
 block()
 {
-    iptables -A OUTPUT -p ${PROTOCOL} --dport ${REMOTE_PORT} -j DROP
-    iptables -A INPUT -p ${PROTOCOL} --sport ${REMOTE_PORT} -j DROP
-    iptables -A FORWARD -p ${PROTOCOL} --dport ${REMOTE_PORT} -j DROP
-    iptables -A FORWARD -p ${PROTOCOL} --sport ${REMOTE_PORT} -j DROP
+    #iptables -A OUTPUT -p ${PROTOCOL} --dport ${REMOTE_PORT} -s ${IP} -j DROP
+    #iptables -A INPUT -p ${PROTOCOL} --sport ${REMOTE_PORT} -d ${IP} -j DROP
+    iptables -A FORWARD -p ${PROTOCOL} --dport ${REMOTE_PORT} -s ${IP} -j DROP
+    iptables -A FORWARD -p ${PROTOCOL} --sport ${REMOTE_PORT} -d ${IP} -j DROP
 }
 
 unblock()
 {
-    iptables -D OUTPUT -p ${PROTOCOL} --dport ${REMOTE_PORT} -j DROP
-    iptables -D INPUT -p ${PROTOCOL} --sport ${REMOTE_PORT} -j DROP
-    iptables -D FORWARD -p ${PROTOCOL} --dport ${REMOTE_PORT} -j DROP
-    iptables -D FORWARD -p ${PROTOCOL} --sport ${REMOTE_PORT} -j DROP
+    #iptables -D OUTPUT -p ${PROTOCOL} --dport ${REMOTE_PORT} -s ${IP} -j DROP
+    #iptables -D INPUT -p ${PROTOCOL} --sport ${REMOTE_PORT} -d ${IP} -j DROP
+    iptables -D FORWARD -p ${PROTOCOL} --dport ${REMOTE_PORT} -s ${IP} -j DROP
+    iptables -D FORWARD -p ${PROTOCOL} --sport ${REMOTE_PORT} -d ${IP} -j DROP
 }
 
 flush()
@@ -51,22 +52,24 @@ list()
 case "$1" in
 
 block)
-    if [ "$#" -ne 3 ]; then
+    if [ "$#" -ne 4 ]; then
         usage
     fi
-    echo "block $2 for remote port $3"
+    echo "block $2 for remote port $3 for $4"
     PROTOCOL=$2
     REMOTE_PORT=$3
+    IP=$4
     block
     ;;
 
 unblock)
-    if [ "$#" -ne 3 ]; then
+    if [ "$#" -ne 4 ]; then
         usage
     fi
-    echo "unblock $2 for remote port $3"
+    echo "unblock $2 for remote port $3 for $4"
     PROTOCOL=$2
     REMOTE_PORT=$3
+    IP=$4
     unblock
     ;;
 

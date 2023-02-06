@@ -188,51 +188,45 @@ optional arguments:
 ```
 $ sudo fw.sh
 
-Usage:  fw.sh block [protocol] [remote_port]
-        fw.sh unblock [protocol] [remote_port]
+Usage:  fw.sh block [protocol] [remote_port] [ip]
+        fw.sh unblock [protocol] [remote_port] [ip]
         fw.sh flush
         fw.sh list
 
-$ sudo fw.sh block udp 5004 # block udp traffic from/to remote port 5004
-block udp for remote port 5004
+$ sudo fw.sh block udp 5004 192.168.1.8 # block udp traffic from/to remote port 5004 for 192.168.1.8
+block udp for remote port 5004 for 192.168.1.8
 
-$ sudo fw.sh block udp 9000 # block udp traffic from/to remote port 9000
-block udp for remote port 9000
+$ sudo fw.sh block udp 9000 192.168.1.8 # block udp traffic from/to remote port 9000 for 192.168.1.8
+block udp for remote port 9000 for 192.168.1.8
 
 $ sudo fw.sh list
 Chain INPUT (policy ACCEPT)
 target     prot opt source               destination
-DROP       udp  --  anywhere             anywhere             udp spt:5004
-DROP       udp  --  anywhere             anywhere             udp spt:9000
 
 Chain FORWARD (policy ACCEPT)
 target     prot opt source               destination
-DROP       udp  --  anywhere             anywhere             udp dpt:5004
-DROP       udp  --  anywhere             anywhere             udp spt:5004
-DROP       udp  --  anywhere             anywhere             udp dpt:9000
-DROP       udp  --  anywhere             anywhere             udp spt:9000
+DROP       udp  --  192.168.1.8          anywhere             udp dpt:5004
+DROP       udp  --  anywhere             192.168.1.8          udp spt:5004
+DROP       udp  --  192.168.1.8          anywhere             udp dpt:9000
+DROP       udp  --  anywhere             192.168.1.8          udp spt:9000
 
 Chain OUTPUT (policy ACCEPT)
 target     prot opt source               destination
-DROP       udp  --  anywhere             anywhere             udp dpt:5004
-DROP       udp  --  anywhere             anywhere             udp dpt:9000
 
-$ sudo fw.h unblock udp 5004 # unblock udp traffic from/to remote port 5004
-unblock udp for remote port 5004
+$ sudo fw.h unblock udp 5004 192.168.1.8 # unblock udp traffic from/to remote port 5004 for 192.168.1.8
+unblock udp for remote port 5004 for 192.168.1.8
 
 $ sudo ./fw.sh list
 Chain INPUT (policy ACCEPT)
 target     prot opt source               destination
-DROP       udp  --  anywhere             anywhere             udp spt:9000
 
 Chain FORWARD (policy ACCEPT)
 target     prot opt source               destination
-DROP       udp  --  anywhere             anywhere             udp dpt:9000
-DROP       udp  --  anywhere             anywhere             udp spt:9000
+DROP       udp  --  192.168.1.8          anywhere             udp dpt:9000
+DROP       udp  --  anywhere             192.168.1.8          udp spt:9000
 
 Chain OUTPUT (policy ACCEPT)
 target     prot opt source               destination
-DROP       udp  --  anywhere             anywhere             udp dpt:9000
 
 $ sudo fw.sh flush # clear all rules
 

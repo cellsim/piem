@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PACKAGE_NAME="piem"
-VERSION="1.1"
+VERSION="1.2"
 BUILD_NAME=$PACKAGE_NAME"_"$VERSION
 
 if [ -d $BUILD_NAME ]; then

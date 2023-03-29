@@ -408,7 +408,8 @@ def main():
     config_parser.add_argument('--numifbs', '-n',
         action='store',
         help='number of ifb devices',
-        default=64
+        default=64,
+        type=int
     )
 
     # list command

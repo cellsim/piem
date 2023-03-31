@@ -277,7 +277,7 @@ class Rule(object):
         ''' % params
         if self.sls is not None:
             add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms %(jitter)dms\n' % params
-        elif self.burst is not None:
+        elif self.burst is not None and self.burst > 0:
             add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss gemodel %(gemodel_p)s%% %(gemodel_r)s%% delay %(delay)dms %(jitter)dms\n' % params
         else:
             add_cmd += 'tc qdisc add dev ifb%(ifb_idx)d root handle 1: netem loss random %(loss)s%% delay %(delay)dms %(jitter)dms\n' % params

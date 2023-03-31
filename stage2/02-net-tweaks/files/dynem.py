@@ -126,6 +126,10 @@ def run(config):
         dyn_r = em.Rule(f, dyn_bw, dyn_loss, dyn_qdelay, dyn_jitter, dyn_delay, dire, dyn_burst, dyn_sls)
         rlist.append({'rule': dyn_r, 'interval': dyn['interval'], 'duration': dyn['duration']})
  
+    if len(rlist) == 0:
+        print('error, empty rule')
+        return
+    
     idx = 0
     signal.signal(signal.SIGINT, signal.default_int_handler)
     while True:

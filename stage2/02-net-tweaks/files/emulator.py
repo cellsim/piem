@@ -296,7 +296,7 @@ class Rule(object):
         # filter is not going to be changed
         if self.sls is not None:
             change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss sls %(sls)s delay %(delay)dms %(jitter)dms\n' % params
-        elif self.burst is not None:
+        elif self.burst is not None and self.burst > 0:
             change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss gemodel %(gemodel_p)s%% %(gemodel_r)s%% delay %(delay)dms %(jitter)dms\n' % params
         else:
             change_cmd += 'tc qdisc change dev ifb%(ifb_idx)d root handle 1: netem loss random %(loss)s%% delay %(delay)dms %(jitter)dms\n' % params

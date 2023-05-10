@@ -8,7 +8,7 @@ You can also setup for ubuntu with some [manual steps](#ubuntu-setup).
 
 ## Installation
 
-You can get the pre-build image [here](https://cisco.box.com/s/kclcch2ujsr83qie6po6hq2w2yrj8u13), and download [Etcher](https://etcher.io/) and install the image on the micro sdcard.
+You can get the pre-build image [here](https://www.dropbox.com/scl/fi/e02utgcmfw5opfymdq9h7/image_2023-05-10-piem-lite.zip?rlkey=l8b32tgl41zoqa6nupxq2y41r&st=ad66ldbu&dl=0), and download [Etcher](https://etcher.io/) and install the image on the micro sdcard.
 
 Once startup, it already setup wifi in AP mode and bridge between wifi (wlan0) and ethernet (eth0) ports. You can plug in the ethernet port to your local network, you can then ping `piemulator.local` to get the ip address of the emulator, or you can just use the domain name for ssh access, like `ssh pi@piemulator.local`.
 
@@ -20,7 +20,7 @@ Wifi SSID: `piem`, password: `piemulator`
 
 Then you can emulate the network condition of those test devices, both uplink and downlink.
 
-To update, you can download the debian [package](https://cisco.box.com/s/ksn191amu2z0isac15xy78a94jwddz3d), and then install via `sudo dpkg -i ./piem_1.1.deb`
+To update, you can download the debian [package](https://www.dropbox.com/scl/fi/s9xvgwy2ei6pcyu6iaewd/piem_1.3.deb?rlkey=hd1zwvg3ix043ra5yqoezg49y&st=3u6skhda&dl=0), and then install via `sudo dpkg -i ./piem_1.3.deb`
 
 ## Network emulation
 
@@ -243,7 +243,7 @@ target     prot opt source               destination
 
 ## Emulate network dynamics
 
-There is a helper script that can emulate network dynamics, and this can be helpful for emulate the wifi network.
+There is a helper script that can emulate network dynamics, and this can be helpful for emulate the dynamic network behavior.
 
 ```
 ./dynem.py -h
@@ -306,6 +306,10 @@ The bandwidth is 2 mbps normally, and will:
 
 For those network parameters not specified in the 'dynamics' section, it will remain the same as before.
 
+## Cellsim
+
+[Cellsim](http://alfalfa.mit.edu) can be used to emulate the cellular network by replaying the traces collected in realworld. It's already integrated in the prebuild image. You can also install cellsim follow the [instructions](https://cellsim.github.io).
+
 ## Switch to wired bridge
 
 If you perfer wired connection, you can switch to two ethernet (another one using usb-ethernet port) using the script [bridge\_switch.sh](/stage2/02-net-tweaks/files/bridge_switch.sh) built in.
@@ -327,7 +331,7 @@ Currently Simple Gilbert Model is used for burst loss, and for more intuitive wa
 
 ## Ubuntu setup
 
-1. Download the [deb](https://cisco.box.com/s/ksn191amu2z0isac15xy78a94jwddz3d) file, and run `sudo dpkg -i ./piem_1.1.deb`.
+1. Download the [deb](https://www.dropbox.com/scl/fi/s9xvgwy2ei6pcyu6iaewd/piem_1.3.deb?rlkey=hd1zwvg3ix043ra5yqoezg49y&st=3u6skhda&dl=0) file, and run `sudo dpkg -i ./piem_1.3.deb`.
 
 2. Install bridge-utils, `sudo apt install bridge-utils`
 
@@ -421,7 +425,7 @@ To install the required dependencies for pi-gen you should run:
 
 ```bash
 apt-get install coreutils quilt parted qemu-user-static debootstrap zerofree zip \
-dosfstools bsdtar libcap2-bin grep rsync xz-utils file git curl bc
+dosfstools libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc
 ```
 
 The file `depends` contains a list of tools needed.  The format of this

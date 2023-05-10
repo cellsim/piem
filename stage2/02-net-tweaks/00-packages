@@ -3,3 +3,4 @@ raspberrypi-net-mods
 net-tools
 hostapd
 bridge-utils
+cellsim

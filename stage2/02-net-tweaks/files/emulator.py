@@ -446,6 +446,7 @@ def main():
     change_parser.add_argument('--burst', type=int, help="burst length in packets", default=None)
     change_parser.add_argument('--sls', help="loss pattern file name in \"/usr/lib/tc/\" without \".patt\" file extension", default=None)
     change_parser.add_argument('--delay', '-d', type=int, help="delay in ms", default=10)
+    change_parser.add_argument('--jitter', '-j', type=int, help="jitter in ms", default=0)
     change_parser.add_argument('--qdelay', '-q', type=int, help="maxinum queuing delay in ms", default=100)
     change_parser.add_argument('--ip', '-f', help="src(uplink) or dst(downlink) ip filter", required=True)
     change_parser.add_argument('--direction', '-c', choices=['uplink', 'downlink'], required=True)
